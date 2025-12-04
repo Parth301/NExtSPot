@@ -8,6 +8,7 @@ const spotsRoutes = require("./routes/spots");
 const bookingsRoutes = require("./routes/bookings");
 const systemRoutes = require("./routes/system");
 const reviewsRouter = require('./routes/reviews');
+const slotsRoutes = require("./routes/slots");
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use("/api/spots", spotsRoutes);
 app.use("/api/bookings", bookingsRoutes);
 app.use("/api/system", systemRoutes);
 app.use('/reviews', reviewsRouter);
+app.use("/api/slots", slotsRoutes);
 
 // Default route
 app.get("/", (req, res) => res.send("Parking System API is running"));

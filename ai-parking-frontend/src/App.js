@@ -15,6 +15,7 @@ import UserReviews from "./pages/user/UserReviews";
 import OwnerDashboard from "./pages/owner/OwnerDashboard";
 import OwnerBookings from "./pages/owner/OwnerBookings";
 import OwnerReviewsPage from './pages/owner/OwnerReviewsPage';
+import SlotManagement from './components/SlotManagement';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
       <Route path="/owner/dashboard" element={<OwnerDashboard />} />
       <Route path="/owner/bookings" element={<OwnerBookings />} />
       <Route path="/owner/reviews" element={<OwnerReviewsPage />} />
+      <Route path="/owner/slots/:spotId" element={<SlotManagement />} />
 
       {/* Redirect unknown routes to home */}
       <Route path="*" element={<Navigate to="/" replace />} />

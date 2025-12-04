@@ -142,12 +142,17 @@ function OwnerBookings() {
                         <MapPin size={24} color="#1976d2" />
                       </div>
                       <div style={styles.spotDetails}>
-                        <h4 style={styles.spotName}>{booking.spot_name}</h4>
-                        <div style={styles.customerInfo}>
-                          <User size={14} />
-                          <span>{booking.user_name}</span>
-                        </div>
-                      </div>
+  <h4 style={styles.spotName}>
+    {booking.spot_name}
+    {booking.slot_number && (
+      <span style={styles.slotBadge}>Slot #{booking.slot_number}</span>
+    )}
+  </h4>
+  <div style={styles.customerInfo}>
+    <User size={14} />
+    <span>{booking.user_name}</span>
+  </div>
+</div>
                     </div>
                     <div style={styles.bookingStatus}>
                       <span style={{
@@ -452,7 +457,17 @@ const styles = {
     gap: '0.25rem',
     color: '#059669',
     fontWeight: '700'
-  }
+  },
+  slotBadge: {
+  marginLeft: '0.75rem',
+  padding: '0.25rem 0.75rem',
+  backgroundColor: '#dbeafe',
+  color: '#1e40af',
+  fontSize: '0.75rem',
+  fontWeight: '600',
+  borderRadius: '6px',
+  display: 'inline-block'
+}
 };
 
 export default OwnerBookings;

@@ -381,6 +381,7 @@ function UserMap() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
+
   const fetchReviewSummary = async (spotId) => {
     const token = getToken();
     if (!token || reviewSummaries[spotId]) return;
@@ -392,7 +393,6 @@ function UserMap() {
 
       if (res.ok) {
         const data = await res.json();
-        // Ensure average_rating is a number
         const sanitizedData = {
           ...data,
           average_rating: parseFloat(data.average_rating) || 0,
@@ -428,7 +428,7 @@ function UserMap() {
       console.error('Error checking review eligibility:', err);
     }
   };
-  // ✅ ADD THESE NEW FUNCTIONS BELOW ↓
+
   const fetchSpotReviews = async (spotId, page = 1) => {
     const token = getToken();
     if (!token) return;
@@ -577,19 +577,27 @@ function UserMap() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Booking failed");
 
-      setMessage("Booking successful!");
+      setMessage(`Booking successful! Slot #${data.slot_number} reserved. ${data.slots_remaining} slot(s) remaining.`);
       closeBookingDialog();
 
       setSpots(prevSpots =>
         prevSpots.map(spot =>
           spot.id === bookingSpotId
-            ? { ...spot, status: 'occupied' }
+            ? {
+                ...spot,
+                available_slots: data.slots_remaining,
+                status: data.slots_remaining > 0 ? 'available' : 'occupied'
+              }
             : spot
         )
       );
 
       if (selectedSpot && selectedSpot.id === bookingSpotId) {
-        setSelectedSpot(prev => ({ ...prev, status: 'occupied' }));
+        setSelectedSpot(prev => ({
+          ...prev,
+          available_slots: data.slots_remaining,
+          status: data.slots_remaining > 0 ? 'available' : 'occupied'
+        }));
       }
 
       setTimeout(() => fetchSpots(false), 1000);
@@ -597,7 +605,7 @@ function UserMap() {
       setTimeout(() => {
         setSelectedSpot(null);
         clearRoute();
-      }, 3000);
+      }, 5000);
     } catch (err) {
       setMessage(err.message);
     }
@@ -624,11 +632,9 @@ function UserMap() {
 
   const filterAndSortSpots = (spotsToFilter) => {
     let filtered = spotsToFilter.filter(spot => {
-      // Price filter
       if (spot.price < filters.minPrice) return false;
       if (filters.maxPrice !== null && spot.price > filters.maxPrice) return false;
 
-      // Distance filter
       if (userLocation) {
         const distance = calculateDistance(
           userLocation[0],
@@ -640,7 +646,6 @@ function UserMap() {
         if (filters.maxDistance !== null && distance > filters.maxDistance) return false;
       }
 
-      // Status filter
       if (filters.status !== 'all') {
         if (filters.status === 'unavailable') {
           if (spot.status !== 'unavailable' && spot.status !== 'occupied') return false;
@@ -652,7 +657,6 @@ function UserMap() {
       return true;
     });
 
-    // Keep existing sort logic
     filtered.sort((a, b) => {
       switch (filters.sortBy) {
         case 'distance':
@@ -852,7 +856,6 @@ function UserMap() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-
             <button
               onClick={() => setShowSpotsList(!showSpotsList)}
               style={{
@@ -1179,7 +1182,6 @@ function UserMap() {
                   marginBottom: '16px',
                   border: '1px solid #e5e7eb'
                 }}>
-                  {/* Price Filter */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{
                       display: 'flex',
@@ -1235,7 +1237,6 @@ function UserMap() {
                     </div>
                   </div>
 
-                  {/* Distance Filter */}
                   <div style={{ marginBottom: '16px', opacity: userLocation ? 1 : 0.5 }}>
                     <label style={{
                       display: 'flex',
@@ -1301,7 +1302,6 @@ function UserMap() {
                     )}
                   </div>
 
-                  {/* Status Filter */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{
                       display: 'flex',
@@ -1338,7 +1338,6 @@ function UserMap() {
                     </select>
                   </div>
 
-                  {/* Sort By */}
                   <div style={{ marginBottom: '12px' }}>
                     <label style={{
                       display: 'flex',
@@ -1375,7 +1374,6 @@ function UserMap() {
                     </select>
                   </div>
 
-                  {/* Reset Button */}
                   <button
                     onClick={resetFilters}
                     style={{
@@ -1503,7 +1501,7 @@ function UserMap() {
                           gap: '4px'
                         }}>
                           <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h-8m0 0v8m0-8l8 8 4-4 6 6" />
                           </svg>
                           {calculateDistance(userLocation[0], userLocation[1], spot.latitude, spot.longitude).toFixed(1)} km away
                         </p>
@@ -1528,7 +1526,8 @@ function UserMap() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    marginBottom: '8px'
                   }}>
                     <span style={{
                       fontSize: '13px',
@@ -1550,101 +1549,159 @@ function UserMap() {
                       {getSpotStatusInfo(spot.status).text}
                     </span>
 
-                    {spot.status === 'available' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              showRoute(spot.latitude, spot.longitude, spot.name);
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '8px 12px',
-                              background: 'white',
-                              color: '#0369a1',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              border: '2px solid #0ea5e9',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                            Route
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openBookingDialog(spot.id);
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '8px 16px',
-                              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                              color: 'white',
-                              fontSize: '12px',
-                              fontWeight: '700',
-                              border: 'none',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
-                            }}
-                          >
-                            Book
-                          </button>
-                        </div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      background: spot.available_slots > 0 ? '#dcfce7' : '#fee2e2',
+                      borderRadius: '8px',
+                      border: `1px solid ${spot.available_slots > 0 ? '#86efac' : '#fecaca'}`
+                    }}>
+                      <svg style={{ width: '14px', height: '14px', color: spot.available_slots > 0 ? '#059669' : '#dc2626' }} fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                        <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
+                      </svg>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: spot.available_slots > 0 ? '#065f46' : '#991b1b'
+                      }}>
+                        {spot.available_slots}/{spot.total_slots}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '4px'
+                    }}>
+                      <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>
+                        Slot Availability
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#374151', fontWeight: '600' }}>
+                        {spot.available_slots > 0
+                          ? `${spot.available_slots} slot${spot.available_slots > 1 ? 's' : ''} free`
+                          : 'Full'}
+                      </span>
+                    </div>
+                    <div style={{
+                      width: '100%',
+                      height: '6px',
+                      background: '#e5e7eb',
+                      borderRadius: '3px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: `${(spot.available_slots / spot.total_slots) * 100}%`,
+                        height: '100%',
+                        background: spot.available_slots > spot.total_slots * 0.5
+                          ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+                          : spot.available_slots > 0
+                          ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)'
+                          : '#dc2626',
+                        transition: 'width 0.3s ease'
+                      }}></div>
+                    </div>
+                  </div>
+
+                  {spot.status === 'available' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            openReviewsModal(spot);
+                            showRoute(spot.latitude, spot.longitude, spot.name);
                           }}
                           style={{
-                            width: '100%',
+                            flex: 1,
                             padding: '8px 12px',
-                            background: '#fef3c7',
-                            color: '#92400e',
+                            background: 'white',
+                            color: '#0369a1',
                             fontSize: '12px',
                             fontWeight: '600',
-                            border: '2px solid #fbbf24',
+                            border: '2px solid #0ea5e9',
                             borderRadius: '8px',
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '6px'
+                            gap: '4px'
                           }}
                         >
                           <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                           </svg>
-                          View Reviews {reviewSummaries[spot.id]?.total_reviews > 0 && `(${reviewSummaries[spot.id].total_reviews})`}
-                          {canReviewSpots[spot.id]?.canReview && (
-                            <span style={{
-                              background: '#059669',
-                              color: 'white',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              fontSize: '10px',
-                              fontWeight: '700',
-                              marginLeft: '4px'
-                            }}>
-                              Can Review
-                            </span>
-                          )}
+                          Route
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openBookingDialog(spot.id);
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '8px 16px',
+                            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                            color: 'white',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
+                          }}
+                        >
+                          Book
                         </button>
                       </div>
-                    )}
-                  </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openReviewsModal(spot);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          background: '#fef3c7',
+                          color: '#92400e',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          border: '2px solid #fbbf24',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
+                        View Reviews {reviewSummaries[spot.id]?.total_reviews > 0 && `(${reviewSummaries[spot.id].total_reviews})`}
+                        {canReviewSpots[spot.id]?.canReview && (
+                          <span style={{
+                            background: '#059669',
+                            color: 'white',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            marginLeft: '4px'
+                          }}>
+                            Can Review
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -1767,15 +1824,68 @@ function UserMap() {
                       <h4 style={{ fontWeight: '600', color: '#111827', margin: '0 0 12px', fontSize: '18px' }}>
                         {spot.name}
                       </h4>
+
+                      <div style={{
+                        background: '#f9fafb',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        marginBottom: '12px',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
+                            Total Slots
+                          </span>
+                          <span style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
+                            {spot.total_slots}
+                          </span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
+                            Available
+                          </span>
+                          <span style={{
+                            fontSize: '15px',
+                            fontWeight: '700',
+                            color: spot.available_slots > 0 ? '#059669' : '#dc2626'
+                          }}>
+                            {spot.available_slots}
+                          </span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
+                            Occupied
+                          </span>
+                          <span style={{ fontSize: '15px', fontWeight: '700', color: '#d97706' }}>
+                            {spot.total_slots - spot.available_slots}
+                          </span>
+                        </div>
+                      </div>
+
                       {reviewSummaries[spot.id] && reviewSummaries[spot.id].average_rating > 0 && (
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
                           marginBottom: '12px',
-                          padding: '8px',
+                          padding: '10px',
                           background: '#fef3c7',
-                          borderRadius: '6px'
+                          borderRadius: '8px',
+                          border: '1px solid #fbbf24'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                             {[...Array(5)].map((_, i) => (
@@ -1792,11 +1902,15 @@ function UserMap() {
                               </svg>
                             ))}
                           </div>
-                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#92400e' }}>
-                            {reviewSummaries[spot.id].average_rating.toFixed(1)} ({reviewSummaries[spot.id].total_reviews} reviews)
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: '#d97706' }}>
+                            {reviewSummaries[spot.id].average_rating.toFixed(1)}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#92400e' }}>
+                            ({reviewSummaries[spot.id].total_reviews})
                           </span>
                         </div>
                       )}
+
                       <div style={{
                         display: 'grid',
                         gridTemplateColumns: '1fr 1fr',
@@ -1810,7 +1924,7 @@ function UserMap() {
                             fontWeight: '600',
                             color: getSpotStatusInfo(spot.status).color
                           }}>
-                            {getSpotStatusInfo(spot.status).text}
+                            {spot.available_slots > 0 ? `${spot.available_slots} Available` : 'Full'}
                           </span>
                         </div>
                         <div>
@@ -1820,6 +1934,7 @@ function UserMap() {
                           </span>
                         </div>
                       </div>
+
                       <div style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -1961,15 +2076,23 @@ function UserMap() {
                   color: '#111827',
                   margin: 0
                 }}>{selectedSpot.name}</h3>
+
                 <span style={{
                   fontSize: '14px',
                   fontWeight: '600',
-                  color: getSpotStatusInfo(selectedSpot.status).color,
-                  background: getSpotStatusInfo(selectedSpot.status).bg,
+                  color: selectedSpot.available_slots > 0 ? '#059669' : '#dc2626',
+                  background: selectedSpot.available_slots > 0 ? '#dcfce7' : '#fee2e2',
                   padding: '4px 10px',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}>
-                  {getSpotStatusInfo(selectedSpot.status).text}
+                  <svg style={{ width: '16px', height: '16px' }} fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                    <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
+                  </svg>
+                  {selectedSpot.available_slots}/{selectedSpot.total_slots} slots
                 </span>
               </div>
 
@@ -2008,7 +2131,7 @@ function UserMap() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {selectedSpot.status === 'available' && (
+              {selectedSpot.available_slots > 0 && (
                 <>
                   <button
                     onClick={() => showRoute(selectedSpot.latitude, selectedSpot.longitude, selectedSpot.name)}
@@ -2041,7 +2164,7 @@ function UserMap() {
                       boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
                     }}
                   >
-                    Reserve Spot
+                    Reserve Slot ({selectedSpot.available_slots} available)
                   </button>
                 </>
               )}
@@ -2229,6 +2352,7 @@ function UserMap() {
           </div>
         </div>
       )}
+
       {showReviewsModal && selectedSpotForReviews && (
         <div style={{
           position: 'fixed',
@@ -2253,7 +2377,6 @@ function UserMap() {
             display: 'flex',
             flexDirection: 'column'
           }}>
-            {/* Modal Header */}
             <div style={{
               padding: '24px',
               borderBottom: '1px solid #e5e7eb',
@@ -2336,7 +2459,6 @@ function UserMap() {
               </div>
             </div>
 
-            {/* Modal Body */}
             <div style={{
               flex: 1,
               overflowY: 'auto',
@@ -2372,7 +2494,7 @@ function UserMap() {
                     margin: '0 auto 20px'
                   }}>
                     <svg style={{ width: '40px', height: '40px', color: '#9ca3af' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-2.8 2.888c-.784.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                   </div>
                   <p style={{ margin: '0 0 8px', fontWeight: '600', fontSize: '16px', color: '#374151' }}>
@@ -2652,7 +2774,6 @@ function UserMap() {
               )}
             </div>
 
-            {/* Modal Footer with Pagination */}
             {reviewsPagination && reviewsPagination.totalPages > 1 && (
               <div style={{
                 padding: '16px 24px',
@@ -2705,7 +2826,6 @@ function UserMap() {
               </div>
             )}
 
-            {/* Can Review Badge */}
             {canReviewSpots[selectedSpotForReviews.id]?.canReview && (
               <div style={{
                 padding: '16px 24px',
@@ -2755,38 +2875,38 @@ function UserMap() {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
-        
+
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
-        
+
         @keyframes slideIn {
-          0% { 
-            opacity: 0; 
-            transform: translateY(-20px) scale(0.95); 
+          0% {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
           }
-          100% { 
-            opacity: 1; 
-            transform: translateY(0) scale(1); 
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
           }
         }
-        
+
         .leaflet-popup-content-wrapper {
           border-radius: 12px !important;
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
           border: none !important;
         }
-        
+
         .leaflet-popup-tip {
           background: white !important;
         }
-        
+
         .leaflet-control-zoom {
           border: none !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
         }
-        
+
         .leaflet-control-zoom a {
           background: white !important;
           color: #374151 !important;
@@ -2795,38 +2915,38 @@ function UserMap() {
           margin: 2px !important;
           font-weight: 600 !important;
         }
-        
+
         .leaflet-control-zoom a:hover {
           background: #f3f4f6 !important;
         }
-        
+
         .user-location-marker {
           z-index: 1000 !important;
         }
-        
+
         .parking-marker {
           z-index: 999 !important;
         }
-        
+
         .parking-marker:hover div {
           transform: scale(1.15) !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         }
-        
+
         ::-webkit-scrollbar {
           width: 8px;
         }
-        
+
         ::-webkit-scrollbar-track {
           background: #f1f5f9;
           border-radius: 4px;
         }
-        
+
         ::-webkit-scrollbar-thumb {
           background: #cbd5e1;
           border-radius: 4px;
         }
-        
+
         ::-webkit-scrollbar-thumb:hover {
           background: #94a3b8;
         }

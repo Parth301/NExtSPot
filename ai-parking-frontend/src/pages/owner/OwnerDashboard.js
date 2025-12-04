@@ -17,7 +17,14 @@ function MapClickHandler({ onMapClick, isAddingMode }) {
 
 function OwnerDashboard() {
   const [spots, setSpots] = useState([]);
-  const [newSpot, setNewSpot] = useState({ name: "", latitude: "", longitude: "", price: "", type: "" });
+const [newSpot, setNewSpot] = useState({ 
+  name: "", 
+  latitude: "", 
+  longitude: "", 
+  price: "", 
+  type: "",
+  initial_slots: 1 
+});
   const [message, setMessage] = useState("");
   const [isAddingMode, setIsAddingMode] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
@@ -79,18 +86,26 @@ function OwnerDashboard() {
   };
 
   // Add new spot
-  const addSpot = () => {
-    if (!newSpot.name || !newSpot.latitude || !newSpot.longitude || !newSpot.price || !newSpot.type) {
-      setMessage("Please fill in all fields");
-      return;
-    }
+const addSpot = () => {
+  if (!newSpot.name || !newSpot.latitude || !newSpot.longitude || !newSpot.price || !newSpot.type) {
+    setMessage("Please fill in all fields");
+    return;
+  }
 
-    const payload = {
-      ...newSpot,
-      latitude: parseFloat(newSpot.latitude),
-      longitude: parseFloat(newSpot.longitude),
-      price: parseFloat(newSpot.price),
-    };
+  // Validate initial_slots
+  const initialSlots = parseInt(newSpot.initial_slots) || 1;
+  if (initialSlots < 1 || initialSlots > 100) {
+    setMessage("Initial slots must be between 1 and 100");
+    return;
+  }
+
+const payload = {
+  ...newSpot,
+  latitude: parseFloat(newSpot.latitude),
+  longitude: parseFloat(newSpot.longitude),
+  price: parseFloat(newSpot.price),
+  initial_slots: initialSlots  // Add this line
+};
 
     fetch("http://localhost:5000/api/spots/add", {
       method: "POST",
@@ -101,25 +116,16 @@ function OwnerDashboard() {
       .then(data => {
         setMessage(data.message || "Spot added successfully!");
         fetchSpots();
-        setNewSpot({ name: "", latitude: "", longitude: "", price: "", type: "" });
+        setNewSpot({ 
+    name: "", 
+    latitude: "", 
+    longitude: "", 
+    price: "", 
+    type: "",
+    initial_slots: 1
+  });
       })
       .catch(() => setMessage("Failed to add spot"));
-  };
-
-  // Toggle availability
-  const toggleAvailability = (id, current) => {
-    const is_available = Number(!current);
-    fetch(`http://localhost:5000/api/spots/${id}/availability`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ is_available }),
-    })
-      .then(res => res.json())
-      .then(data => {
-        setMessage(data.message);
-        fetchSpots();
-      })
-      .catch(() => setMessage("Failed to toggle availability"));
   };
 
   // Remove spot
@@ -593,6 +599,41 @@ function OwnerDashboard() {
                 </div>
               </div>
 
+              <div>
+  <label style={{
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: '6px'
+  }}>Initial Number of Slots</label>
+  <input
+    placeholder="1-100"
+    value={newSpot.initial_slots || 1}
+    onChange={e => setNewSpot({ ...newSpot, initial_slots: parseInt(e.target.value) || 1 })}
+    type="number"
+    min="1"
+    max="100"
+    style={{
+      width: '100%',
+      padding: '10px 12px',
+      border: '1px solid #D1D5DB',
+      borderRadius: '6px',
+      fontSize: '14px',
+      transition: 'border-color 0.2s ease',
+      outline: 'none',
+      background: '#FFFFFF',
+      boxSizing: 'border-box'
+    }}
+    onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+    onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
+  />
+  <p style={{
+    margin: '4px 0 0 0',
+    fontSize: '12px',
+    color: '#64748B'
+  }}>Number of parking slots to create (1-100)</p>
+</div>
               <button
                 onClick={addSpot}
                 style={{
@@ -683,6 +724,9 @@ function OwnerDashboard() {
                   {spots.filter(spot => spot.status === 'available').length}
                 </span>
               </div>
+
+
+
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -711,6 +755,68 @@ function OwnerDashboard() {
                   {spots.filter(spot => spot.status === 'reserved').length}
                 </span>
               </div>
+              {/* NEW ROWS */}
+<div style={{ height: '1px', background: '#E2E8F0', margin: '8px 0' }}></div>
+<div style={{
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '8px 0'
+}}>
+  <span style={{ color: '#64748B', fontSize: '14px', fontWeight: '500' }}>Total Slots</span>
+  <span style={{
+    fontWeight: '600',
+    fontSize: '16px',
+    color: '#1E293B',
+    background: '#F8FAFC',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    minWidth: '24px',
+    textAlign: 'center'
+  }}>
+    {spots.reduce((sum, spot) => sum + (spot.total_slots || 0), 0)}
+  </span>
+</div>
+<div style={{
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '8px 0'
+}}>
+  <span style={{ color: '#64748B', fontSize: '14px', fontWeight: '500' }}>Available Slots</span>
+  <span style={{
+    fontWeight: '600',
+    fontSize: '16px',
+    color: '#22C55E',
+    background: '#DCFCE7',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    minWidth: '24px',
+    textAlign: 'center'
+  }}>
+    {spots.reduce((sum, spot) => sum + (spot.available_slots || 0), 0)}
+  </span>
+</div>
+<div style={{
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '8px 0'
+}}>
+  <span style={{ color: '#64748B', fontSize: '14px', fontWeight: '500' }}>Occupied Slots</span>
+  <span style={{
+    fontWeight: '600',
+    fontSize: '16px',
+    color: '#EF4444',
+    background: '#FEE2E2',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    minWidth: '24px',
+    textAlign: 'center'
+  }}>
+    {spots.reduce((sum, spot) => sum + (spot.occupied_slots || 0), 0)}
+  </span>
+</div>
             </div>
           </div>
         </div>
@@ -776,80 +882,147 @@ function OwnerDashboard() {
                   position={[spot.latitude, spot.longitude]}
                   icon={createCustomIcon(spot.status)}
                 >
-                  <Popup>
-                    <div style={{ minWidth: '240px', padding: '4px' }}>
-                      <div style={{
-                        marginBottom: '16px',
-                        color: '#374151',
-                        fontSize: '14px',
-                        fontWeight: '600'
-                      }}>
-                        ₹{spot.price}/hour
-                      </div>
+                <Popup>
+  <div style={{ minWidth: '280px', padding: '8px' }}>
+    <div style={{
+      marginBottom: '12px',
+      paddingBottom: '12px',
+      borderBottom: '1px solid #E2E8F0'
+    }}>
+      <h4 style={{
+        margin: '0 0 8px 0',
+        fontSize: '16px',
+        fontWeight: '600',
+        color: '#1E293B'
+      }}>{spot.name}</h4>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        color: '#374151',
+        fontSize: '14px',
+        fontWeight: '600'
+      }}>
+        <IndianRupee size={14} />
+        {spot.price}/hour
+      </div>
+    </div>
 
-                      <div style={{
-                        display: 'flex',
-                        gap: '8px'
-                      }}>
-                        <button
-                          onClick={() => toggleAvailability(spot.id, spot.is_available)}
-                          disabled={spot.status === "reserved"}
-                          style={{
-                            flex: 1,
-                            padding: '8px 12px',
-                            background: spot.status === "reserved"
-                              ? '#F3F4F6'
-                              : spot.is_available
-                                ? '#FFFFFF'
-                                : '#F8FAFC',
-                            color: spot.status === "reserved"
-                              ? '#9CA3AF'
-                              : spot.is_available
-                                ? '#EF4444'
-                                : '#22C55E',
-                            border: spot.status === "reserved"
-                              ? '1px solid #D1D5DB'
-                              : spot.is_available
-                                ? '1px solid #FCA5A5'
-                                : '1px solid #BBF7D0',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            cursor: spot.status === "reserved" ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          {spot.is_available ? <EyeOff size={12} /> : <Eye size={12} />}
-                          {spot.is_available ? 'Hide' : 'Show'}
-                        </button>
-                        <button
-                          onClick={() => removeSpot(spot.id)}
-                          style={{
-                            padding: '8px 12px',
-                            background: '#FFFFFF',
-                            color: '#EF4444',
-                            border: '1px solid #FCA5A5',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px'
-                          }}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#FEF2F2'}
-                          onMouseLeave={(e) => e.target.style.backgroundColor = '#FFFFFF'}
-                        >
-                          <Trash2 size={12} />
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </Popup>
+    {/* Slot Statistics */}
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
+      gap: '8px',
+      marginBottom: '12px'
+    }}>
+      <div style={{
+        background: '#F8FAFC',
+        padding: '8px',
+        borderRadius: '6px',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#1E293B'
+        }}>{spot.total_slots}</div>
+        <div style={{
+          fontSize: '11px',
+          color: '#64748B',
+          marginTop: '2px'
+        }}>Total</div>
+      </div>
+      <div style={{
+        background: '#DCFCE7',
+        padding: '8px',
+        borderRadius: '6px',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#22C55E'
+        }}>{spot.available_slots}</div>
+        <div style={{
+          fontSize: '11px',
+          color: '#15803D',
+          marginTop: '2px'
+        }}>Available</div>
+      </div>
+      <div style={{
+        background: '#FEE2E2',
+        padding: '8px',
+        borderRadius: '6px',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#EF4444'
+        }}>{spot.occupied_slots || 0}</div>
+        <div style={{
+          fontSize: '11px',
+          color: '#DC2626',
+          marginTop: '2px'
+        }}>Occupied</div>
+      </div>
+    </div>
+
+    {/* Action Buttons */}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px'
+    }}>
+      <a
+        href={`/owner/slots/${spot.id}`}
+        style={{
+          padding: '8px 12px',
+          background: '#1E293B',
+          color: '#FFFFFF',
+          border: 'none',
+          borderRadius: '6px',
+          fontSize: '13px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          textDecoration: 'none',
+          transition: 'background-color 0.2s ease'
+        }}
+        onMouseEnter={(e) => e.target.style.backgroundColor = '#0F172A'}
+        onMouseLeave={(e) => e.target.style.backgroundColor = '#1E293B'}
+      >
+        Manage Slots
+      </a>
+      <button
+        onClick={() => removeSpot(spot.id)}
+        style={{
+          padding: '8px 12px',
+          background: '#FFFFFF',
+          color: '#EF4444',
+          border: '1px solid #FCA5A5',
+          borderRadius: '6px',
+          fontSize: '13px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={(e) => e.target.style.backgroundColor = '#FEF2F2'}
+        onMouseLeave={(e) => e.target.style.backgroundColor = '#FFFFFF'}
+      >
+        <Trash2 size={12} />
+        Delete Spot
+      </button>
+    </div>
+  </div>
+</Popup>
                 </Marker>
               ))}
             </MapContainer>
