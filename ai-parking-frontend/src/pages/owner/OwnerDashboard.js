@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { Plus, MapPin, DollarSign, Clock, Eye, EyeOff, Trash2, RotateCcw, Navigation, Activity, AlertTriangle, X, LogOut } from "lucide-react";
+import { Plus, MapPin, IndianRupee, Clock, Eye, EyeOff, Trash2, RotateCcw, Navigation, Activity, AlertTriangle, X, LogOut } from "lucide-react";
 
 // Map click handler component
 function MapClickHandler({ onMapClick, isAddingMode }) {
@@ -171,7 +171,7 @@ function OwnerDashboard() {
   // Create custom map icons for different spot statuses
   const createCustomIcon = (status) => {
     let color, bgColor, borderColor;
-    
+
     switch (status) {
       case 'available':
         color = '#FFFFFF';
@@ -327,8 +327,8 @@ function OwnerDashboard() {
             <RotateCcw size={14} />
             Refresh
           </button>
-          <a 
-            href="/owner/bookings" 
+          <a
+            href="/owner/bookings"
             style={{
               background: '#1E293B',
               color: '#FFFFFF',
@@ -345,6 +345,20 @@ function OwnerDashboard() {
           >
             View Bookings
           </a>
+          <a href="/owner/reviews"
+            style={{
+              background: '#1E293B',
+              color: '#FFFFFF',
+              textDecoration: 'none',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#0F172A'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#1E293B'}>View Reviews</a>
         </div>
       </div>
 
@@ -359,16 +373,16 @@ function OwnerDashboard() {
           {/* Message Display */}
           {message && (
             <div style={{
-              background: message.toLowerCase().includes("cannot") || message.toLowerCase().includes("failed") 
-                ? '#FEF2F2' 
+              background: message.toLowerCase().includes("cannot") || message.toLowerCase().includes("failed")
+                ? '#FEF2F2'
                 : '#F0FDF4',
-              color: message.toLowerCase().includes("cannot") || message.toLowerCase().includes("failed") 
+              color: message.toLowerCase().includes("cannot") || message.toLowerCase().includes("failed")
                 ? '#DC2626' : '#16A34A',
               padding: '12px 16px',
               borderRadius: '8px',
               fontSize: '14px',
               fontWeight: '500',
-              border: `1px solid ${message.toLowerCase().includes("cannot") || message.toLowerCase().includes("failed") 
+              border: `1px solid ${message.toLowerCase().includes("cannot") || message.toLowerCase().includes("failed")
                 ? '#FECACA' : '#BBF7D0'}`,
               animation: 'slideIn 0.3s ease-out'
             }}>
@@ -425,7 +439,7 @@ function OwnerDashboard() {
                   onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
                 />
               </div>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{
@@ -735,16 +749,16 @@ function OwnerDashboard() {
           )}
 
           <div style={{ height: '100%', borderRadius: '8px', overflow: 'hidden' }}>
-            <MapContainer 
-              center={userLocation || [20, 77]} 
-              zoom={userLocation ? 15 : 5} 
+            <MapContainer
+              center={userLocation || [20, 77]}
+              zoom={userLocation ? 15 : 5}
               minZoom={3}
               maxZoom={18}
               worldCopyJump={true}
               maxBounds={[[-85, -180], [85, 180]]}
               maxBoundsOptions={{ animate: true, duration: 0.25, padding: [20, 20] }}
-              style={{ 
-                height: '100%', 
+              style={{
+                height: '100%',
                 width: '100%',
                 borderRadius: '8px',
                 border: 'none',
@@ -755,10 +769,10 @@ function OwnerDashboard() {
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               <MapClickHandler onMapClick={handleMapClick} isAddingMode={isAddingMode} />
-              
+
               {spots.map(spot => (
-                <Marker 
-                  key={spot.id} 
+                <Marker
+                  key={spot.id}
                   position={[spot.latitude, spot.longitude]}
                   icon={createCustomIcon(spot.status)}
                 >
@@ -770,9 +784,9 @@ function OwnerDashboard() {
                         fontSize: '14px',
                         fontWeight: '600'
                       }}>
-                        ${spot.price}/hour
+                        ₹{spot.price}/hour
                       </div>
-                      
+
                       <div style={{
                         display: 'flex',
                         gap: '8px'
@@ -783,20 +797,20 @@ function OwnerDashboard() {
                           style={{
                             flex: 1,
                             padding: '8px 12px',
-                            background: spot.status === "reserved" 
-                              ? '#F3F4F6' 
-                              : spot.is_available 
-                                ? '#FFFFFF' 
+                            background: spot.status === "reserved"
+                              ? '#F3F4F6'
+                              : spot.is_available
+                                ? '#FFFFFF'
                                 : '#F8FAFC',
-                            color: spot.status === "reserved" 
-                              ? '#9CA3AF' 
-                              : spot.is_available 
-                                ? '#EF4444' 
+                            color: spot.status === "reserved"
+                              ? '#9CA3AF'
+                              : spot.is_available
+                                ? '#EF4444'
                                 : '#22C55E',
-                            border: spot.status === "reserved" 
-                              ? '1px solid #D1D5DB' 
-                              : spot.is_available 
-                                ? '1px solid #FCA5A5' 
+                            border: spot.status === "reserved"
+                              ? '1px solid #D1D5DB'
+                              : spot.is_available
+                                ? '1px solid #FCA5A5'
                                 : '1px solid #BBF7D0',
                             borderRadius: '6px',
                             fontSize: '13px',

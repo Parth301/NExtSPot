@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Calendar, DollarSign, MapPin, User, Users, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Calendar, IndianRupee, MapPin, User, Users, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 
 function OwnerBookings() {
   const [bookings, setBookings] = useState([]);
@@ -173,7 +173,7 @@ function OwnerBookings() {
                         fontSize: '1.125rem',
                         fontWeight: '700'
                       }}>
-                        <DollarSign size={16} />
+                        <IndianRupee size={16} />
                         {booking.total_price}
                       </span>
                     </div>

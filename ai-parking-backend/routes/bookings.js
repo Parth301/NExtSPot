@@ -43,8 +43,18 @@ router.post("/reserve/:parking_id", auth(["user"]), (req, res) => {
 router.get("/my-reservations", auth(["user"]), (req, res) => {
   const query = `
     SELECT 
-      b.id as booking_id, b.reserved_at, b.expires_at, b.duration_hours, b.total_price, b.status,
-      ps.name as spot_name, ps.latitude, ps.longitude, ps.type, ps.price as spot_price
+      b.id as booking_id,
+      b.parking_id,
+      b.reserved_at,
+      b.expires_at,
+      b.duration_hours,
+      b.total_price,
+      b.status,
+      ps.name as spot_name,
+      ps.latitude,
+      ps.longitude,
+      ps.type,
+      ps.price as spot_price
     FROM bookings b
     JOIN parking_spots ps ON b.parking_id = ps.id
     WHERE b.user_id = ?

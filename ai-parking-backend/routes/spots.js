@@ -8,23 +8,39 @@ const auth = require("../middleware/authMiddleware");
 
 // Get all spots with availability (for USER map view)
 router.get("/available", auth(["user"]), (req, res) => {
-  const query = `
-    SELECT 
-      ps.id, ps.name, ps.latitude, ps.longitude, ps.price, ps.type,
-      a.is_available,
-      CASE 
-        WHEN b.id IS NOT NULL AND b.status = 'active' THEN 'reserved'
-        WHEN a.is_available = 1 THEN 'available'
-        ELSE 'unavailable'
-      END as status
-    FROM parking_spots ps
-    LEFT JOIN availability a ON ps.id = a.parking_id
-    LEFT JOIN bookings b ON ps.id = b.parking_id AND b.status = 'active'
+  const expireQuery = `
+    UPDATE bookings 
+    SET status = 'expired' 
+    WHERE status = 'active' AND expires_at < NOW()
   `;
+  
+  db.query(expireQuery, (expireErr, expireResult) => {
+    if (expireErr) {
+      console.error("Error expiring bookings:", expireErr);
+      // Continue anyway - don't block the request
+    } else if (expireResult.affectedRows > 0) {
+      console.log(`Expired ${expireResult.affectedRows} booking(s)`);
+    }
 
-  db.query(query, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(result);
+    // Now fetch available spots with updated status
+    const query = `
+      SELECT 
+        ps.id, ps.name, ps.latitude, ps.longitude, ps.price, ps.type,
+        a.is_available,
+        CASE 
+          WHEN b.id IS NOT NULL AND b.status = 'active' THEN 'reserved'
+          WHEN a.is_available = 1 THEN 'available'
+          ELSE 'unavailable'
+        END as status
+      FROM parking_spots ps
+      LEFT JOIN availability a ON ps.id = a.parking_id
+      LEFT JOIN bookings b ON ps.id = b.parking_id AND b.status = 'active'
+    `;
+
+    db.query(query, (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(result);
+    });
   });
 });
 
@@ -32,34 +48,51 @@ router.get("/available", auth(["user"]), (req, res) => {
 
 // Get all spots of the owner (OWNER dashboard)
 router.get("/owner", auth(["owner"]), (req, res) => {
-  const query = `
-    SELECT 
-      ps.id,
-      ps.owner_id,
-      ps.name,
-      ps.latitude,
-      ps.longitude,
-      ps.price,
-      ps.type,
-      ps.created_at,
-      a.is_available,
-      CASE 
-        WHEN EXISTS (
-          SELECT 1 FROM bookings b 
-          WHERE b.parking_id = ps.id AND b.status = 'active'
-        ) THEN 'reserved'
-        WHEN a.is_available = 1 THEN 'available'
-        ELSE 'unavailable'
-      END as status
-    FROM parking_spots ps
-    LEFT JOIN availability a ON ps.id = a.parking_id
-    WHERE ps.owner_id = ?
-    ORDER BY ps.name
+  // First, expire any bookings that have passed their time
+  const expireQuery = `
+    UPDATE bookings 
+    SET status = 'expired' 
+    WHERE status = 'active' AND expires_at < NOW()
   `;
+  
+  db.query(expireQuery, (expireErr, expireResult) => {
+    if (expireErr) {
+      console.error("Error expiring bookings:", expireErr);
+      // Continue anyway - don't block the request
+    } else if (expireResult.affectedRows > 0) {
+      console.log(`Expired ${expireResult.affectedRows} booking(s)`);
+    }
 
-  db.query(query, [req.user.id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(result);
+    // Now fetch owner's spots with updated status
+    const query = `
+      SELECT 
+        ps.id,
+        ps.owner_id,
+        ps.name,
+        ps.latitude,
+        ps.longitude,
+        ps.price,
+        ps.type,
+        ps.created_at,
+        a.is_available,
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 FROM bookings b 
+            WHERE b.parking_id = ps.id AND b.status = 'active'
+          ) THEN 'reserved'
+          WHEN a.is_available = 1 THEN 'available'
+          ELSE 'unavailable'
+        END as status
+      FROM parking_spots ps
+      LEFT JOIN availability a ON ps.id = a.parking_id
+      WHERE ps.owner_id = ?
+      ORDER BY ps.name
+    `;
+
+    db.query(query, [req.user.id], (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(result);
+    });
   });
 });
 

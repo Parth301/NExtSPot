@@ -8,7 +8,7 @@ dotenv.config();
 
 const allowedRoles = ["user", "owner"];
 
-// Register
+//register
 router.post("/register", async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password)
@@ -34,7 +34,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login
+// login
 router.post("/login", (req, res) => {
   const { email, password, role } = req.body;
   if (!email || !password || !role) return res.status(400).json({ message: "All fields required" });
